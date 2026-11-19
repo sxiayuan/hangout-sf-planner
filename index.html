@@ -1,0 +1,918 @@
+<title>Hangout SF</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one column. Home = foggy skyline hero, events happening in SF, idea cards, your hangouts.
+   Hangout = the day drawn as a transit line, stops as stations. Share = a bottom sheet. */
+:root {
+  --bg: #EAEFF3; --surface: #FFFFFF; --raised: #F5F8FA; --ink: #0F2236; --muted: #5A6B7C; --line: #D6DEE5;
+  --accent: #D4402A; --accent-ink: #FFFFFF; --soft: #FBE4DD; --bay: #1F4E79; --bay-soft: #DCE7F1;
+  --green: #2F7A55; --green-soft: #DDEFE5;
+  --hill: #C3D1CB; --city: #B7C6D4; --fog: rgba(255,255,255,.75); --shadow: 0 1px 2px rgba(15,34,54,.06), 0 6px 20px rgba(15,34,54,.06);
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Inter", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0A1520; --surface: #10202F; --raised: #142739; --ink: #E7EDF2; --muted: #8DA0B3; --line: #1F3447;
+  --accent: #FF6B4E; --accent-ink: #0A1520; --soft: #3A1F1A; --bay: #8DB8E0; --bay-soft: #13283B;
+  --green: #6FCF9C; --green-soft: #12301F;
+  --hill: #15283A; --city: #1B3247; --fog: rgba(140,165,190,.16); --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0A1520; --surface: #10202F; --raised: #142739; --ink: #E7EDF2; --muted: #8DA0B3; --line: #1F3447;
+  --accent: #FF6B4E; --accent-ink: #0A1520; --soft: #3A1F1A; --bay: #8DB8E0; --bay-soft: #13283B;
+  --green: #6FCF9C; --green-soft: #12301F;
+  --hill: #15283A; --city: #1B3247; --fog: rgba(140,165,190,.16); --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 80px }
+.wrap { max-width: 760px; margin: 0 auto }
+h1, h2, h3 { font-family: var(--display); font-stretch: 112%; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0; line-height: 1.04 }
+button, input, textarea { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+a { color: var(--bay) }
+
+.top { display: flex; justify-content: space-between; align-items: center; padding-block: 18px }
+.logo { font-family: var(--display); font-stretch: 125%; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; background: none; border: 0; padding: 0; display: flex; align-items: center; gap: 8px }
+.logo i { font-style: normal; background: var(--accent); color: var(--accent-ink); font-size: 11px; padding: 3px 6px; border-radius: 5px; letter-spacing: .06em }
+.hello { font-size: 13px; color: var(--muted) }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; padding: 11px 20px; font-weight: 600; font-size: 14.5px; border: 1px solid transparent; transition: transform .12s, filter .12s, border-color .12s; text-decoration: none; color: inherit }
+.btn svg { width: 16px; height: 16px }
+.btn:active { transform: translateY(1px) }
+.btn.primary { background: var(--accent); color: var(--accent-ink) }
+.btn.primary:hover { filter: brightness(1.07) }
+.btn.dark { background: var(--ink); color: var(--bg) }
+.btn.ghost { background: var(--surface); border-color: var(--line) }
+.btn.ghost:hover { border-color: var(--muted) }
+.btn.small { padding: 7px 13px; font-size: 13px }
+.btn:disabled { opacity: .45; cursor: default }
+.link { background: none; border: 0; padding: 0; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 2px }
+.link.danger { color: var(--accent) }
+.label { font-size: 12px; letter-spacing: .02em; color: var(--muted); font-weight: 600 }
+.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700 }
+.status { font-size: 13px; color: var(--muted) }
+.status.err { color: var(--accent) }
+.empty { color: var(--muted); padding: 18px 0; font-size: 14px }
+
+/* Hero */
+.hero { position: relative; border-radius: 24px; overflow: hidden; background: linear-gradient(180deg, var(--bay-soft), var(--bg) 88%); padding: 40px 28px 0; display: grid; gap: 16px; isolation: isolate }
+.hero h1 { font-size: clamp(34px, 8.5vw, 62px) }
+.hero h1 em { font-style: normal; color: var(--accent) }
+.hero p { margin: 0; color: var(--muted); max-width: 42ch; font-size: 16px }
+.hero .cta { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 2 }
+.skyline { display: block; width: 100%; height: auto; margin-top: 8px }
+.fog { position: absolute; inset: auto -20% 18% -20%; height: 90px; z-index: 1; pointer-events: none;
+  background: radial-gradient(40% 60% at 25% 50%, var(--fog), transparent 70%), radial-gradient(35% 50% at 70% 60%, var(--fog), transparent 70%);
+  animation: drift 26s ease-in-out infinite alternate }
+@keyframes drift { from { transform: translateX(-6%) } to { transform: translateX(6%) } }
+
+/* Sections */
+.section { margin-top: 44px; display: grid; gap: 14px }
+.section-head { display: grid; gap: 4px }
+.section-head h2 { font-size: 24px }
+.section-head p { margin: 0; color: var(--muted); font-size: 14px }
+.chips { display: flex; gap: 6px; flex-wrap: wrap }
+.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 13px; transition: border-color .12s }
+.chip:hover { border-color: var(--muted) }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+
+/* Events */
+.events { display: grid; gap: 8px }
+.event { display: grid; grid-template-columns: 54px 1fr auto; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px }
+.date-tile { width: 54px; text-align: center; border-radius: 12px; background: var(--soft); padding: 5px 0; line-height: 1.1 }
+.date-tile small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700 }
+.date-tile b { font-family: var(--display); font-size: 21px }
+.ev-main { min-width: 0; display: grid; gap: 2px }
+.ev-title { font-weight: 600; overflow-wrap: anywhere }
+.ev-meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere }
+.kind { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--bay-soft); color: var(--bay); margin-right: 6px; vertical-align: 1px }
+.kind.street { background: var(--green-soft); color: var(--green) }
+.ev-actions { display: flex; gap: 6px; align-items: center }
+.more { justify-self: start }
+.source { font-size: 12px; color: var(--muted) }
+.source a { color: var(--muted) }
+
+/* Ideas */
+.ideas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.idea { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: grid; gap: 8px; align-content: start; text-align: left; transition: border-color .15s, box-shadow .15s, transform .15s }
+.idea:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px) }
+.idea-top { display: flex; justify-content: space-between; gap: 8px; align-items: center }
+.hood { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--bay) }
+.vibe { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--bay-soft); color: var(--bay) }
+.idea h3 { font-size: 19px; font-stretch: 100% }
+.idea p { margin: 0; color: var(--muted); font-size: 13.5px }
+.idea .go { color: var(--accent); font-weight: 600; font-size: 13px }
+
+/* Your hangouts */
+.mine { display: grid; gap: 8px }
+.row { display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); text-align: left; width: 100% }
+.row:hover { border-color: var(--muted) }
+.row-name { font-weight: 600; min-width: 0; flex: 1 }
+.row-meta { color: var(--muted); font-size: 13px; white-space: nowrap }
+
+/* Create */
+.create { display: grid; gap: 16px; padding-block: 12px }
+.create > h1 { font-size: clamp(32px, 6vw, 46px); margin-bottom: 4px }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 18px; display: grid; gap: 14px; box-shadow: var(--shadow) }
+.panel h2 { font-size: 17px; font-stretch: 100% }
+.field { display: grid; gap: 6px }
+.field input, .field textarea { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; width: 100%; transition: border-color .12s, background .12s }
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); background: var(--surface) }
+.field input.bad { border-color: var(--accent) }
+.field textarea { min-height: 130px; resize: vertical }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+.ask { position: relative }
+.ask textarea { padding-right: 60px }
+.mic { position: absolute; right: 10px; top: 34px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center }
+.mic svg { width: 18px; height: 18px }
+.mic.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); animation: pulse 1.4s infinite }
+.mic.inline { position: static; flex: none; width: 42px; height: 42px }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent) } }
+.partial { color: var(--muted); font-style: italic; font-size: 13px; min-height: 1.2em }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
+.suggest { display: grid; gap: 10px }
+.picked { display: flex; gap: 10px; align-items: center; background: var(--green-soft); color: var(--green); border-radius: 12px; padding: 10px 12px; font-size: 13.5px }
+.picked b { color: var(--ink) }
+
+/* Invites */
+.invite-add { display: flex; gap: 8px }
+.invite-add input { flex: 1; min-width: 0 }
+.invites { display: flex; flex-wrap: wrap; gap: 6px }
+.invitee { display: inline-flex; align-items: center; gap: 6px; background: var(--bay-soft); color: var(--ink); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px }
+.invitee button { border: 0; background: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted) }
+.invitee button:hover { background: var(--surface) }
+.sendlist { display: grid; gap: 6px }
+.sendrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; flex-wrap: wrap }
+.sendrow span { min-width: 0; overflow-wrap: anywhere }
+.msg { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all }
+
+/* Sheet */
+.scrim { position: fixed; inset: 0; background: rgba(8,18,28,.45); z-index: 30; display: flex; align-items: flex-end; justify-content: center; padding-top: env(safe-area-inset-top, 0px) }
+.sheet { background: var(--surface); width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; border-radius: 22px 22px 0 0; padding: 22px max(20px, env(safe-area-inset-left, 0px)) calc(22px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 16px; box-shadow: 0 -10px 40px rgba(0,0,0,.2) }
+.sheet-head { display: flex; justify-content: space-between; align-items: start; gap: 12px }
+.sheet-head h2 { font-size: 22px }
+.x { border: 0; background: var(--raised); width: 34px; height: 34px; border-radius: 50%; font-size: 18px; line-height: 1; flex: none }
+@media (min-width: 640px) { .scrim { align-items: center } .sheet { border-radius: 22px } }
+
+/* Hangout */
+.hhead { padding: 22px 22px 18px; border-radius: 22px; background: linear-gradient(160deg, var(--bay-soft), var(--surface)); display: grid; gap: 10px; border: 1px solid var(--line) }
+.hname { font-size: clamp(28px, 6vw, 42px); border: 0; background: none; padding: 0; width: 100%; font-family: var(--display); font-stretch: 112%; font-weight: 800; letter-spacing: -0.02em; border-radius: 6px }
+.hname:focus { outline: none; box-shadow: 0 2px 0 var(--accent) }
+.hmeta { display: flex; gap: 8px 14px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 14px }
+.hmeta input[type=date] { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 8px; font-size: 14px }
+.sun { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12.5px; color: var(--accent) }
+.sun svg { width: 16px; height: 16px }
+.people { display: flex; gap: 4px; flex-wrap: wrap }
+.who { font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; padding-block: 16px 4px }
+
+.timeline { list-style: none; margin: 12px 0 0; padding: 0; display: grid }
+.stop, .gap { display: grid; grid-template-columns: 76px 1fr; gap: 14px }
+.time { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; padding-top: 18px; text-align: right; color: var(--muted); line-height: 1.35 }
+.time b { color: var(--ink); font-weight: 700; display: block; font-size: 13.5px }
+.track { position: relative; padding: 10px 0 10px 26px; min-width: 0 }
+.track::before { content: ""; position: absolute; left: 7px; top: 0; bottom: 0; width: 6px; background: var(--accent); border-radius: 3px }
+.timeline > li:first-child .track::before { top: 22px }
+.timeline > li:last-child .track::before { bottom: calc(100% - 30px) }
+.station { position: absolute; left: 0; top: 20px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 5px solid var(--accent) }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 13px 15px; box-shadow: var(--shadow) }
+.stop.now .card { border-color: var(--accent); box-shadow: 0 0 0 3px var(--soft) }
+.stop.now .station { background: var(--accent) }
+.nowtag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin-left: 6px }
+.stitle { font-weight: 650; font-size: 16.5px; font-family: var(--display); font-stretch: 100% }
+.place { display: inline-flex; gap: 5px; align-items: center; font-size: 14px; margin-top: 2px; text-decoration: none; color: var(--bay) }
+.place:hover { text-decoration: underline }
+.place svg { width: 14px; height: 14px; flex: none }
+.note { color: var(--muted); font-size: 13.5px; margin-top: 4px; overflow-wrap: anywhere }
+.sfoot { display: flex; gap: 12px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap }
+.gap .track { padding-block: 0 }
+.gap .track::before { background: repeating-linear-gradient(var(--accent) 0 6px, transparent 6px 11px) }
+.gap .seg { font-size: 12px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; padding-block: 2px }
+.gap .seg a { color: var(--bay) }
+.gap .warn { color: var(--accent); font-weight: 600 }
+
+.editor { background: var(--surface); border: 1px solid var(--accent); border-radius: 16px; padding: 16px; display: grid; gap: 10px; margin: 10px 0 }
+.addai { display: flex; gap: 6px; margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px; box-shadow: var(--shadow); align-items: center }
+.addai label { padding-left: 14px; font-size: 13px; color: var(--muted); white-space: nowrap; font-weight: 600 }
+.addai input { flex: 1; min-width: 0; background: none; border: 0; padding: 8px 6px }
+.addai input:focus { outline: none }
+.addai:focus-within { border-color: var(--accent) }
+.dayevents { margin-top: 30px; display: grid; gap: 10px }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 18px; border-radius: 999px; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); text-align: center }
+
+@media (max-width: 560px) {
+  .ideas { grid-template-columns: 1fr }
+  .stop, .gap { grid-template-columns: 58px 1fr; gap: 8px }
+  .time { font-size: 11.5px }
+  .grid2 { grid-template-columns: 1fr }
+  .hero { padding: 30px 20px 0 }
+  .event { grid-template-columns: 48px 1fr; }
+  .date-tile { width: 48px }
+  .ev-actions { grid-column: 2 }
+  .addai label { display: none }
+}
+@media (prefers-reduced-motion: reduce) { .mic.on, .fog { animation: none } .idea:hover { transform: none } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <button class="logo" id="home-btn" type="button">hangout <i>SF</i></button>
+    <span class="hello" id="who-am-i"></span>
+  </header>
+  <main id="app"></main>
+</div>
+<div id="sheet-root"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const app = $("#app");
+const CITY = "San Francisco";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 6v3M5.6 10.6l1.8 1.4M18.4 10.6l-1.8 1.4"/></svg>';
+const SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
+const SKYLINE = `<svg class="skyline" viewBox="0 0 680 190" aria-hidden="true" fill="none">
+  <path d="M0 150 C60 120 110 128 160 140 L160 190 L0 190Z" fill="var(--hill)"/>
+  <path d="M430 190 L430 128 C470 98 520 92 560 112 C600 96 640 100 680 116 L680 190Z" fill="var(--hill)"/>
+  <g fill="var(--city)">
+    <rect x="486" y="84" width="14" height="40"/><rect x="503" y="70" width="18" height="54"/><rect x="524" y="92" width="12" height="32"/>
+    <path d="M548 124 L556 38 L564 124Z"/><rect x="568" y="80" width="16" height="44"/><rect x="587" y="96" width="12" height="28"/>
+    <path d="M626 112 L632 28 L638 112 M622 60 h20 M624 80 h16" stroke="var(--city)" stroke-width="3"/>
+  </g>
+  <g stroke="var(--accent)" stroke-linecap="round">
+    <path d="M40 150 Q130 150 158 52 Q250 140 342 52 Q370 150 460 150" stroke-width="2.4"/>
+    <g stroke-width="1" opacity=".55">${Array.from({ length: 17 }, (_, i) => { const x = 170 + i * 10; const t = (x - 158) / 184; const y = 52 + 4 * 44 * t * (1 - t); return `<path d="M${x} ${y.toFixed(1)} V146"/>`; }).join("")}</g>
+    <path d="M20 148 H480" stroke-width="5"/>
+    <path d="M152 190 V40 M164 190 V40 M336 190 V40 M348 190 V40" stroke-width="6"/>
+    <path d="M152 58 H164 M152 84 H164 M152 110 H164 M336 58 H348 M336 84 H348 M336 110 H348" stroke-width="4"/>
+  </g>
+  <path d="M0 176 C120 168 240 182 360 174 C480 166 580 180 680 172 L680 190 L0 190Z" fill="var(--bay-soft)"/>
+</svg>`;
+
+let db = null, user = null, sample = null, dictation = null, me = null;
+let homeUnsub = null, hUnsubs = [];
+let hangouts = [], current = null, stops = [], editing = null, names = {};
+let ideaVibe = "All", eventFilter = "weekend", eventsShown = 8;
+let EV = { events: [], updated: "", sources: [] };
+
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2600); }
+function fmt12(t) { if (!t) return ""; const [h, m] = t.split(":").map(Number); const ap = h >= 12 ? "pm" : "am"; return `${(h % 12) || 12}${m ? ":" + String(m).padStart(2, "0") : ""}${ap}`; }
+function fmtDate(d, opts = { weekday: "short", month: "short", day: "numeric" }) { if (!d) return "No date yet"; const dt = new Date(d + "T12:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString(undefined, opts); }
+function mapsUrl(place) { return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place + ", " + CITY); }
+function localDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function addDays(s, n) { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return localDate(d); }
+function nextSaturday() { const d = new Date(); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7)); return localDate(d); }
+function dateTile(d) { const dt = d ? new Date(d + "T12:00:00") : null; return `<span class="date-tile"><small>${dt ? esc(dt.toLocaleDateString(undefined, { month: "short" })) : "TBD"}</small><b>${dt ? dt.getDate() : "?"}</b></span>`; }
+
+/* Sunset in San Francisco for a date (sunrise equation), shown in Pacific time */
+function sfSunset(dateStr) {
+  if (!dateStr) return "";
+  const rad = Math.PI / 180, lat = 37.7749, lng = -122.4194;
+  const J = new Date(dateStr + "T20:00:00Z").getTime() / 86400000 + 2440587.5;
+  const n = Math.round(J - 2451545.0 + 0.0008);
+  const Js = n - lng / 360;
+  const M = (357.5291 + 0.98560028 * Js) % 360;
+  const C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 0.0003 * Math.sin(3 * M * rad);
+  const L = (M + C + 180 + 102.9372) % 360;
+  const Jt = 2451545 + Js + 0.0053 * Math.sin(M * rad) - 0.0069 * Math.sin(2 * L * rad);
+  const dec = Math.asin(Math.sin(L * rad) * Math.sin(23.4397 * rad));
+  const w = Math.acos((Math.sin(-0.833 * rad) - Math.sin(lat * rad) * Math.sin(dec)) / (Math.cos(lat * rad) * Math.cos(dec)));
+  const ms = (Jt + w / rad / 360 - 2440587.5) * 86400000;
+  try { return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" }).toLowerCase().replace(" ", ""); } catch { return ""; }
+}
+
+async function resolveNames(ids) {
+  ids = [...new Set(ids.filter(Boolean))];
+  if (!user || !ids.length) return;
+  try { const ps = await user.profiles(ids); for (const id of ids) names[id] = (ps[id] && ps[id].name) || "Someone"; } catch {}
+}
+const nameOf = id => id && id === me ? "You" : (names[id] || "Someone");
+
+/* ---------- Events (DataSF open data, refreshed into events.json) ---------- */
+const eventsReady = fetch("events.json").then(r => r.ok ? r.json() : null).then(d => { if (d && Array.isArray(d.events)) EV = d; }).catch(() => {});
+const today = () => localDate(new Date());
+function onDay(e, d) { return e.start <= d && e.end >= d; }
+function weekendRange() { const t = new Date(); const dow = t.getDay(); const fri = new Date(t); fri.setDate(t.getDate() + ((5 - dow + 7) % 7)); if (dow === 6 || dow === 0) fri.setDate(t.getDate() - (dow === 6 ? 1 : 2)); const f = localDate(fri); return [f < today() ? today() : f, addDays(f, 2)]; }
+function filteredEvents() {
+  const t = today();
+  let list = EV.events.filter(e => e.end >= t);
+  if (eventFilter === "weekend") { const [a, b] = weekendRange(); list = list.filter(e => e.start <= b && e.end >= a); }
+  if (eventFilter === "week") { const b = addDays(t, 7); list = list.filter(e => e.start <= b); }
+  if (eventFilter === "street") list = list.filter(e => e.kind === "Street event");
+  if (eventFilter === "library") list = list.filter(e => e.kind !== "Street event");
+  return list;
+}
+function eventWhenText(e) { const d = e.start === e.end ? fmtDate(e.start) : `${fmtDate(e.start)} to ${fmtDate(e.end)}`; return d + (e.time ? " · " + fmt12(e.time) + (e.endTime ? "–" + fmt12(e.endTime) : "") : ""); }
+function eventRow(e, mode) {
+  const street = e.kind === "Street event";
+  const kind = street ? (/farmers/i.test(e.title) ? "Market" : /block party/i.test(e.title) ? "Block party" : "Street event") : (e.kind === "Author" ? "Author talk" : e.kind);
+  const detail = e.link ? `<a class="btn ghost small" href="${esc(e.link)}" target="_blank" rel="noopener">Details</a>` : `<a class="btn ghost small" href="${esc(mapsUrl(e.where))}" target="_blank" rel="noopener">Map</a>`;
+  const act = mode === "add" ? `<button class="btn dark small" type="button" data-addev="${esc(e.id)}">Add</button>` : `<button class="btn dark small" type="button" data-planev="${esc(e.id)}">Plan around it</button>`;
+  return `<div class="event">${dateTile(mode === "add" ? current.date : (e.start < today() ? today() : e.start))}
+    <div class="ev-main"><div class="ev-title"><span class="kind${street ? " street" : ""}">${esc(kind)}</span>${esc(e.title)}</div>
+    <div class="ev-meta">${esc(eventWhenText(e))} · ${esc(e.where)}</div></div>
+    <div class="ev-actions">${detail}${act}</div></div>`;
+}
+function sourceLine() {
+  if (!EV.updated) return "";
+  return `<div class="source">From San Francisco open data (<a href="https://data.sfgov.org/d/v9cz-kk5i" target="_blank" rel="noopener">street events</a>, <a href="https://data.sfgov.org/d/8i3s-ih2a" target="_blank" rel="noopener">library events</a>). Updated ${esc(new Date(EV.updated).toLocaleDateString(undefined, { month: "short", day: "numeric" }))}.</div>`;
+}
+
+/* ---------- SF ideas ---------- */
+const VIBES = ["All", "Classic", "Foodie", "Outdoorsy", "Artsy", "Night out", "Rainy day"];
+const IDEAS = [
+  { title: "Wharf to North Beach", hood: "Fisherman’s Wharf", vibe: "Classic", blurb: "Sea lions at Pier 39, Musée Mécanique, a cable car up the hill, then pizza in North Beach.",
+    prompt: "Classic SF day: sea lions at Pier 39, Musée Mécanique, ride the Powell-Hyde cable car, walk Lombard Street, coffee and pizza in North Beach, Coit Tower views." },
+  { title: "Burritos and murals", hood: "Mission", vibe: "Foodie", blurb: "A burrito, Balmy Alley murals, Dolores Park on the slope, Bi-Rite ice cream.",
+    prompt: "Mission day: burritos at La Taqueria, Balmy Alley murals, hang out at Dolores Park, Bi-Rite Creamery, browse Valencia Street." },
+  { title: "Bike the bridge", hood: "Crissy Field", vibe: "Outdoorsy", blurb: "Rent bikes, ride across the Golden Gate to Sausalito, ferry back with the skyline.",
+    prompt: "Rent bikes near Crissy Field, ride across the Golden Gate Bridge to Sausalito, lunch in Sausalito, take the ferry back to the Ferry Building." },
+  { title: "Lands End at sunset", hood: "Outer Richmond", vibe: "Outdoorsy", blurb: "Sutro Baths ruins, the Lands End trail, the labyrinth, then Ocean Beach as the sun drops.",
+    prompt: "Afternoon in the Outer Richmond: Sutro Baths ruins, Lands End trail and labyrinth, sunset at Ocean Beach, warm dinner nearby after." },
+  { title: "Golden Gate Park loop", hood: "Golden Gate Park", vibe: "Classic", blurb: "Japanese Tea Garden, de Young tower view, paddle boats on Stow Lake.",
+    prompt: "Golden Gate Park day: Japanese Tea Garden, de Young Museum observation tower, Conservatory of Flowers, paddle boats at Stow Lake, dinner in the Inner Sunset." },
+  { title: "Dim sum and Chinatown", hood: "Chinatown", vibe: "Foodie", blurb: "Dim sum, Dragon Gate, the fortune cookie factory in Ross Alley, then Coit Tower.",
+    prompt: "Chinatown morning: dim sum, walk through the Dragon Gate and Grant Avenue, Golden Gate Fortune Cookie Factory in Ross Alley, then walk up to Coit Tower." },
+  { title: "Ferry Building Saturday", hood: "Embarcadero", vibe: "Foodie", blurb: "Farmers market snacks, the Embarcadero walk, Exploratorium on Pier 15.",
+    prompt: "Saturday on the Embarcadero: Ferry Plaza farmers market, snacks in the Ferry Building, walk the Embarcadero, Exploratorium at Pier 15." },
+  { title: "Hayes Valley and SFMOMA", hood: "SoMa", vibe: "Artsy", blurb: "SFMOMA, Yerba Buena Gardens, then shops and patios in Hayes Valley.",
+    prompt: "Artsy day: SFMOMA, Yerba Buena Gardens, then shopping and a drink in Hayes Valley near Patricia’s Green." },
+  { title: "Twin Peaks to Castro night", hood: "Castro", vibe: "Night out", blurb: "City lights from Twin Peaks, dinner in the Castro, a show at the Castro Theatre.",
+    prompt: "Night out: city views from Twin Peaks at dusk, dinner in the Castro, then a show or bar hop in the Castro." },
+  { title: "Fog day, indoor plan", hood: "Japantown", vibe: "Rainy day", blurb: "Cal Academy’s rainforest, ramen and Kinokuniya books in Japantown, a photo booth.",
+    prompt: "Rainy or foggy day: California Academy of Sciences, then Japantown for ramen, Kinokuniya bookstore, and the photo booths in the Japan Center malls." }
+];
+const HOODS = ["Mission", "North Beach", "Chinatown", "Haight", "Hayes Valley", "Presidio", "Golden Gate Park", "Outer Sunset", "Richmond", "Embarcadero", "Castro", "Japantown"];
+
+/* ---------- Routing ---------- */
+let draft = { idea: "", date: "", event: null };
+let pendingShare = null;
+function route() {
+  const h = location.hash.slice(1);
+  hUnsubs.forEach(u => u()); hUnsubs = []; editing = null; current = null; closeSheet();
+  window.scrollTo(0, 0);
+  if (h === "new") return renderCreate();
+  if (h.startsWith("h-")) return openHangout(h.slice(2));
+  renderHome();
+}
+window.addEventListener("hashchange", route);
+$("#home-btn").onclick = () => { location.hash = ""; };
+function startPlan(idea = "", date = "", event = null) { draft = { idea, date, event }; location.hash = "new"; }
+
+/* ---------- Home ---------- */
+function renderHome() {
+  app.innerHTML = `
+    <section class="hero">
+      <h1>What are we doing in <em>the city</em> this weekend?</h1>
+      <p>See what’s happening, pick an idea, or just say what you’re in the mood for. You get an hour-by-hour plan your friends can open and add to.</p>
+      <div class="cta">
+        <button class="btn primary" id="make" type="button">Make hangout</button>
+        <button class="btn ghost" id="browse" type="button">See what’s happening</button>
+      </div>
+      <div class="fog"></div>
+      ${SKYLINE}
+    </section>
+    <section class="section" id="happening">
+      <div class="section-head"><h2>Happening in SF</h2><p>Street fairs, farmers markets, block parties and free library events around the city.</p></div>
+      <div class="chips" id="evf">${[["weekend", "This weekend"], ["week", "Next 7 days"], ["street", "Street fairs & markets"], ["library", "Library events"]].map(([k, v]) => `<button class="chip" type="button" aria-pressed="${k === eventFilter}" data-k="${k}">${v}</button>`).join("")}</div>
+      <div class="events" id="evlist"><div class="empty">Loading events…</div></div>
+      <div id="evsrc"></div>
+    </section>
+    <section class="section" id="ideas">
+      <div class="section-head"><h2>Ideas around SF</h2><p>Day plans built around real spots. Tap one and Claude fills in the times.</p></div>
+      <div class="chips" id="vibes">${VIBES.map(v => `<button class="chip" type="button" aria-pressed="${v === ideaVibe}" data-v="${esc(v)}">${esc(v)}</button>`).join("")}</div>
+      <div class="ideas" id="idea-grid"></div>
+    </section>
+    <section class="section">
+      <div class="section-head"><h2>Your hangouts</h2></div>
+      <div class="mine" id="list"><div class="empty">Loading hangouts…</div></div>
+    </section>`;
+  $("#make").onclick = () => startPlan();
+  $("#browse").onclick = () => $("#happening").scrollIntoView({ behavior: "smooth" });
+  $("#evf").querySelectorAll(".chip").forEach(c => c.onclick = () => { eventFilter = c.dataset.k; eventsShown = 8; $("#evf").querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === c)); drawEvents(); });
+  $("#vibes").querySelectorAll(".chip").forEach(c => c.onclick = () => { ideaVibe = c.dataset.v; $("#vibes").querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === c)); drawIdeas(); });
+  drawIdeas(); drawList();
+  eventsReady.then(drawEvents);
+}
+function drawEvents() {
+  const box = $("#evlist"); if (!box) return;
+  if (!EV.events.length) { box.innerHTML = `<div class="empty">Events couldn’t load right now.</div>`; return; }
+  const list = filteredEvents();
+  box.innerHTML = list.length ? list.slice(0, eventsShown).map(e => eventRow(e)).join("") + (list.length > eventsShown ? `<button class="btn ghost small more" id="evmore" type="button">Show ${Math.min(8, list.length - eventsShown)} more</button>` : "")
+    : `<div class="empty">Nothing listed for that yet. Try another filter.</div>`;
+  $("#evsrc").innerHTML = sourceLine();
+  const more = $("#evmore"); if (more) more.onclick = () => { eventsShown += 8; drawEvents(); };
+  box.querySelectorAll("[data-planev]").forEach(b => b.onclick = () => {
+    const e = EV.events.find(x => x.id === b.dataset.planev); if (!e) return;
+    const d = e.start < today() ? today() : e.start;
+    startPlan("", d, e);
+  });
+}
+function ideaCard(i, idx, src = "static") {
+  return `<button class="idea" type="button" data-src="${src}" data-i="${idx}">
+    <div class="idea-top"><span class="hood">${esc(i.hood)}</span><span class="vibe">${esc(i.vibe)}</span></div>
+    <h3>${esc(i.title)}</h3><p>${esc(i.blurb)}</p><span class="go">Plan this →</span></button>`;
+}
+function drawIdeas() {
+  const g = $("#idea-grid"); if (!g) return;
+  const list = IDEAS.map((x, i) => [x, i]).filter(([x]) => ideaVibe === "All" || x.vibe === ideaVibe);
+  g.innerHTML = list.map(([x, i]) => ideaCard(x, i)).join("");
+  g.querySelectorAll(".idea").forEach(b => b.onclick = () => startPlan(IDEAS[b.dataset.i].prompt));
+}
+function drawList() {
+  const list = $("#list"); if (!list) return;
+  if (!db) { list.innerHTML = `<div class="empty">Sign in to claude.ai to save hangouts and share them with friends.</div>`; return; }
+  if (!hangouts.length) { list.innerHTML = `<div class="empty">No hangouts yet. Pick an event or idea above to plan your first one.</div>`; return; }
+  list.innerHTML = hangouts.map(h => `<button class="row" type="button" data-id="${esc(h.id)}">
+      ${dateTile(h.date)}
+      <span class="row-name">${esc(h.name || "Untitled hangout")}</span>
+      <span class="row-meta">${h.date ? esc(fmtDate(h.date, { weekday: "short" })) : ""}</span>
+    </button>`).join("");
+  list.querySelectorAll(".row").forEach(b => b.onclick = () => location.hash = "h-" + b.dataset.id);
+}
+function subscribeHome() {
+  if (!db || homeUnsub) return;
+  const timer = setTimeout(() => { const l = $("#list"); if (l && l.textContent.includes("Loading")) l.innerHTML = `<div class="empty">Still connecting. Your hangouts will appear here.</div>`; }, 10000);
+  homeUnsub = db.collection("hangouts").orderBy("updatedAt", "desc").limit(100).onSnapshot(snap => {
+    clearTimeout(timer);
+    hangouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    drawList();
+  }, () => { clearTimeout(timer); const l = $("#list"); if (l) l.innerHTML = `<div class="empty">Couldn’t load hangouts. Reopen the page to try again.</div>`; });
+}
+
+/* ---------- Invites ---------- */
+const isEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+const phoneDigits = s => s.replace(/[^\d+]/g, "");
+const isPhone = s => /^\+?\d{10,15}$/.test(phoneDigits(s));
+function parseInvite(raw) {
+  const s = raw.trim(); if (!s) return null;
+  if (isEmail(s)) return { kind: "email", value: s.toLowerCase() };
+  if (isPhone(s)) return { kind: "phone", value: phoneDigits(s) };
+  return null;
+}
+function fmtPhone(p) { const d = p.replace(/\D/g, ""); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : (d.length === 11 && d[0] === "1" ? `+1 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}` : p); }
+const inviteLabel = i => i.kind === "email" ? i.value : fmtPhone(i.value);
+function inviteEditor(list, onChange) {
+  // returns html + binder; list is mutated in place
+  const html = `<div class="field"><label class="label" for="inv">Friend’s email or phone number</label>
+      <div class="invite-add"><input id="inv" type="text" inputmode="email" autocomplete="off"><button class="btn dark" id="invadd" type="button">Add</button></div>
+      <div class="status" id="invmsg"></div></div>
+    <div class="invites" id="invlist"></div>`;
+  function draw() {
+    $("#invlist").innerHTML = list.map((x, i) => `<span class="invitee">${esc(inviteLabel(x))}<button type="button" aria-label="Remove ${esc(inviteLabel(x))}" data-rmi="${i}">×</button></span>`).join("");
+    $("#invlist").querySelectorAll("[data-rmi]").forEach(b => b.onclick = () => { list.splice(+b.dataset.rmi, 1); draw(); onChange && onChange(); });
+  }
+  function bind() {
+    const add = () => {
+      const inp = $("#inv"), msg = $("#invmsg");
+      const parts = inp.value.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+      if (!parts.length) return;
+      const bad = [];
+      for (const p of parts) { const v = parseInvite(p); if (!v) { bad.push(p); continue; } if (!list.some(x => x.value === v.value)) list.push(v); }
+      inp.value = bad.join(", ");
+      inp.classList.toggle("bad", !!bad.length);
+      msg.className = bad.length ? "status err" : "status";
+      msg.textContent = bad.length ? "That doesn’t look like an email or a phone number with area code." : "";
+      draw(); onChange && onChange();
+    };
+    $("#invadd").onclick = add;
+    $("#inv").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); add(); } };
+    draw();
+  }
+  return { html, bind };
+}
+
+/* ---------- Create ---------- */
+let pickHoods = new Set(), pickVibes = new Set(), aiIdeas = [], draftInvites = [];
+function renderCreate() {
+  draftInvites = [];
+  const ev = draft.event;
+  app.innerHTML = `
+    <section class="create">
+      <h1>Plan a hangout</h1>
+      <div class="panel">
+        <div class="grid2">
+          <div class="field"><label class="label" for="hname">Hangout name</label><input id="hname" required autocomplete="off"></div>
+          <div class="field"><label class="label" for="hdate">Day</label><input id="hdate" type="date" value="${esc(draft.date || nextSaturday())}"></div>
+        </div>
+        ${ev ? `<div class="picked">Building around <b>${esc(ev.title)}</b> · ${esc(eventWhenText(ev))}<button class="link" id="unpick" type="button">Remove</button></div>` : ""}
+        <div class="field ask">
+          <label class="label" for="idea">What do you want to do? Type it or tap the mic.</label>
+          <textarea id="idea"></textarea>
+          <button class="mic" id="mic" type="button" aria-label="Dictate" hidden>${MIC}</button>
+          <div class="partial" id="partial"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Where and what vibe</h2>
+        <div class="field"><span class="label">Neighborhoods</span>
+          <div class="chips" id="hoods">${HOODS.map(h => `<button class="chip" type="button" aria-pressed="${pickHoods.has(h)}" data-h="${esc(h)}">${esc(h)}</button>`).join("")}</div></div>
+        <div class="field"><span class="label">Vibe</span>
+          <div class="chips" id="cvibes">${VIBES.slice(1).map(v => `<button class="chip" type="button" aria-pressed="${pickVibes.has(v)}" data-v="${esc(v)}">${esc(v)}</button>`).join("")}</div></div>
+      </div>
+      <div class="panel" id="invpanel" hidden>
+        <h2>Who’s coming?</h2>
+        ${inviteEditor(draftInvites).html}
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="plan" type="button">Plan my day</button>
+        <button class="btn ghost" id="ideasbtn" type="button">Give me ideas</button>
+        <button class="btn ghost" id="sharebtn" type="button">${SHARE}Share</button>
+        <button class="link" id="blank" type="button">Start with an empty schedule</button>
+      </div>
+      <div class="status" id="cstatus"></div>
+      <div class="suggest" id="suggest"></div>
+    </section>`;
+  $("#idea").value = draft.idea || "";
+  if (ev) $("#unpick").onclick = () => { draft.event = null; $(".picked").remove(); };
+  $("#hoods").querySelectorAll(".chip").forEach(c => c.onclick = () => toggle(pickHoods, c, c.dataset.h));
+  $("#cvibes").querySelectorAll(".chip").forEach(c => c.onclick = () => toggle(pickVibes, c, c.dataset.v));
+  $("#hname").oninput = () => $("#hname").classList.remove("bad");
+  inviteEditor(draftInvites).bind();
+  $("#sharebtn").onclick = () => { const p = $("#invpanel"); p.hidden = !p.hidden; if (!p.hidden) $("#inv").focus(); };
+  setupMic();
+  $("#plan").onclick = planWithClaude;
+  $("#ideasbtn").onclick = getIdeas;
+  $("#blank").onclick = () => { if (needName()) createHangout({ name: $("#hname").value.trim(), stops: draft.event ? [eventStop(draft.event)] : [] }); };
+  applyAvailability();
+}
+function applyAvailability() {
+  const st = $("#cstatus"); if (!st) return;
+  st.className = "status"; st.textContent = "";
+  $("#plan").disabled = !sample || !db; $("#ideasbtn").disabled = !sample; $("#blank").disabled = !db;
+  if (!db) st.textContent = "Sign in to claude.ai to create and share hangouts.";
+  else if (!sample) st.textContent = "AI planning isn’t available in this view. You can still start with an empty schedule.";
+}
+function needName() {
+  const n = $("#hname");
+  if (n.value.trim()) return true;
+  n.classList.add("bad"); n.focus();
+  const st = $("#cstatus"); st.className = "status err"; st.textContent = "Give your hangout a name first.";
+  return false;
+}
+function toggle(set, chip, v) { set.has(v) ? set.delete(v) : set.add(v); chip.setAttribute("aria-pressed", set.has(v)); }
+function eventsOn(d) { return EV.events.filter(e => onDay(e, d)); }
+function prefs() {
+  const p = [];
+  if (pickHoods.size) p.push("Preferred neighborhoods: " + [...pickHoods].join(", ") + ".");
+  if (pickVibes.size) p.push("Vibe: " + [...pickVibes].join(", ") + ".");
+  const d = $("#hdate") && $("#hdate").value;
+  if (d) {
+    p.push(`Date: ${fmtDate(d, { weekday: "long", month: "long", day: "numeric" })}. Sunset in SF that day is about ${sfSunset(d)}.`);
+    const evs = eventsOn(d).filter(e => !draft.event || e.id !== draft.event.id).slice(0, 12);
+    if (evs.length) p.push("Real events happening that day (include one only if it fits what they asked for): " + evs.map(e => `${e.title} at ${e.where}${e.time ? " from " + e.time + (e.endTime ? " to " + e.endTime : "") : ""}`).join("; ") + ".");
+  }
+  if (draft.event) { const e = draft.event; p.push(`MUST include this event they picked: ${e.title} at ${e.where}${e.time ? ", " + e.time + (e.endTime ? " to " + e.endTime : "") : ""}. Build the rest of the day around it.`); }
+  return p.join("\n");
+}
+function eventStop(e) { return { start: e.time || "", end: e.endTime || "", title: e.title, place: e.where.replace(/ Between (.+?) And .*/, " & $1"), hood: e.hood || "", note: e.link ? "Details: " + e.link : "" }; }
+
+let micOn = false;
+function setupMic() {
+  const btn = $("#mic"); if (!btn || !dictation) return;
+  btn.hidden = false;
+  btn.onclick = () => {
+    if (micOn) { dictation.stop().catch(() => {}); return; }
+    dictation.start().catch(e => { if (e && e.code === "not_granted") btn.hidden = true; const p = $("#partial"); if (p) p.textContent = ""; });
+  };
+}
+function wireDictation() {
+  dictation.onPartial(({ text }) => { const p = $("#partial"); if (p) p.textContent = text; });
+  dictation.onFinal(({ text }) => {
+    const ta = $("#idea") || $("#ai-add"); if (!ta) return;
+    ta.value = (ta.value ? ta.value.replace(/\s*$/, " ") : "") + text.trim();
+    const p = $("#partial"); if (p) p.textContent = "";
+  });
+  dictation.onState(({ state }) => {
+    micOn = state === "listening" || state === "starting";
+    document.querySelectorAll(".mic").forEach(b => { b.classList.toggle("on", micOn); b.setAttribute("aria-label", micOn ? "Stop dictating" : "Dictate"); });
+    if (!micOn) { const p = $("#partial"); if (p) p.textContent = ""; }
+  });
+}
+
+const SF_RULES = `You are a San Francisco local planning a day with friends. Use real, specific SF places that exist. Keep stops geographically sensible (SF is hilly and spread out); assume Muni, BART, cable cars, walking or rideshare and leave travel time between neighborhoods. Remember SF weather: fog on the west side, wind at the water, bring layers. Time outdoor viewpoints around sunset.`;
+const STOP_SHAPE = `{"start":"HH:MM","end":"HH:MM","title":"short activity name","place":"specific venue or landmark name, or empty string","hood":"SF neighborhood","note":"one short local tip, or empty string"}`;
+
+async function getIdeas() {
+  const st = $("#cstatus"), box = $("#suggest"), btn = $("#ideasbtn");
+  btn.disabled = true; st.className = "status"; st.textContent = "Thinking of things to do…";
+  try {
+    const out = await sample.json(`${SF_RULES}
+Suggest 4 different ideas for a hangout day in San Francisco. Mix well-known spots with local favorites. ${prefs()}
+${$("#idea").value.trim() ? "They said: " + $("#idea").value.trim() : ""}
+Reply with only a JSON array of {"title":"3-5 word name","hood":"main neighborhood","vibe":"one of Classic, Foodie, Outdoorsy, Artsy, Night out, Rainy day","blurb":"one sentence naming 3-4 real places","prompt":"a detailed one-sentence plan request to hand to a planner"}`, { modelTier: "default", cache: false });
+    aiIdeas = (Array.isArray(out) ? out : []).filter(x => x && x.title).slice(0, 6);
+    st.textContent = aiIdeas.length ? "Tap one to plan it." : "No ideas came back. Try again.";
+    box.innerHTML = `<div class="ideas">${aiIdeas.map((x, i) => ideaCard({ title: x.title, hood: x.hood || "SF", vibe: x.vibe || "Idea", blurb: x.blurb || "" }, i, "ai")).join("")}</div>`;
+    box.querySelectorAll(".idea").forEach(b => b.onclick = () => { $("#idea").value = aiIdeas[b.dataset.i].prompt || aiIdeas[b.dataset.i].blurb; if (!$("#hname").value.trim()) $("#hname").value = aiIdeas[b.dataset.i].title; planWithClaude(); });
+  } catch (e) { st.className = "status err"; st.textContent = e && e.code === "rate_limited" ? "Too many requests. Wait a minute and try again." : "Couldn’t get ideas right now. Try again."; }
+  btn.disabled = false;
+}
+async function planWithClaude() {
+  if (!needName()) return;
+  const idea = $("#idea").value.trim();
+  const st = $("#cstatus");
+  if (!idea && !pickHoods.size && !pickVibes.size && !draft.event) { st.className = "status err"; st.textContent = "Say what you want to do, or pick a neighborhood or vibe."; return; }
+  $("#plan").disabled = true; st.className = "status"; st.textContent = "Planning your day around the city…";
+  try {
+    const out = await sample.json(`${SF_RULES}
+Turn the request below into a realistic one-day schedule in San Francisco. Use 24-hour "HH:MM" times, respect any times they gave, keep their order, add travel buffers, 3 to 10 stops.
+${prefs()}
+Reply with only JSON: {"stops":[${STOP_SHAPE}]}
+
+Request: ${idea || "Plan a fun day for us."}`, { modelTier: "default", cache: false });
+    const list = Array.isArray(out) ? out : out && out.stops;
+    if (!Array.isArray(list)) throw {};
+    await createHangout({ name: $("#hname").value.trim(), stops: list, idea });
+  } catch (e) {
+    $("#plan").disabled = false; st.className = "status err";
+    st.textContent = e && e.code === "rate_limited" ? "Too many plans at once. Wait a minute and try again." :
+      e && e.code === "not_granted" ? "AI planning was turned off for this page. Start with an empty schedule instead." :
+      "Couldn’t make a plan from that. Add a little more detail and try again.";
+  }
+}
+function cleanStop(s) {
+  const t = v => /^\d{1,2}:\d{2}$/.test(String(v || "")) ? String(v).padStart(5, "0") : "";
+  return { start: t(s.start), end: t(s.end), title: String(s.title || "Untitled").slice(0, 120), place: String(s.place || "").slice(0, 160), hood: String(s.hood || "").slice(0, 40), note: String(s.note || "").slice(0, 400) };
+}
+async function createHangout({ name, stops: list, idea = "" }) {
+  const id = rid(), now = Date.now();
+  try {
+    await db.doc("hangouts/" + id).set({ name, city: CITY, date: ($("#hdate") && $("#hdate").value) || "", idea, invites: draftInvites.slice(), createdBy: me, people: [me].filter(Boolean), createdAt: now, updatedAt: now });
+    for (const s of list) await db.collection("hangouts/" + id + "/stops").doc(rid()).set({ ...cleanStop(s), addedBy: me, updatedAt: now });
+    if (draftInvites.length) pendingShare = id;
+    draft = { idea: "", date: "", event: null };
+    location.hash = "h-" + id;
+  } catch {
+    const st = $("#cstatus"); if (st) { st.className = "status err"; st.textContent = "Couldn’t save the hangout. You may only have view access to this page."; }
+    const p = $("#plan"); if (p) p.disabled = false;
+  }
+}
+
+/* ---------- Share sheet ---------- */
+function closeSheet() { $("#sheet-root").innerHTML = ""; document.removeEventListener("keydown", sheetKey); }
+function sheetKey(e) { if (e.key === "Escape") closeSheet(); }
+function inviteMessage() { return `Join my hangout “${current.name}” on ${fmtDate(current.date, { weekday: "long", month: "short", day: "numeric" })} in SF. Here’s the plan: ${location.href}`; }
+function openShare() {
+  if (!current) return;
+  const list = (current.invites || []).map(x => ({ ...x }));
+  const ed = inviteEditor(list, saveInvites);
+  async function saveInvites() {
+    try { await db.doc("hangouts/" + current.id).update({ invites: list.slice(), updatedAt: Date.now() }); } catch { toast("Couldn’t save invites. You may have view-only access."); }
+    drawSend();
+  }
+  $("#sheet-root").innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
+    <div class="sheet-head"><div><h2 id="sh-t">Share this hangout</h2><div class="status">Add your friends, then send each one the plan.</div></div><button class="x" id="shx" type="button" aria-label="Close">×</button></div>
+    ${ed.html}
+    <div class="sendlist" id="sendlist"></div>
+    <div class="field"><span class="label">Invite message</span><div class="msg" id="shmsg"></div></div>
+    <div class="actions"><button class="btn primary" id="shcopy" type="button">Copy message</button><button class="btn ghost" id="shlink" type="button">Copy link only</button></div>
+    <div class="status">Friends need a claude.ai account to open the plan. To let them edit it, also add them as Contributors from this page’s Share menu. Copy as text works for anyone.</div>
+  </div></div>`;
+  ed.bind();
+  $("#shmsg").textContent = inviteMessage();
+  function drawSend() {
+    const msg = encodeURIComponent(inviteMessage());
+    $("#sendlist").innerHTML = list.length ? list.map(x => `<div class="sendrow"><span>${esc(inviteLabel(x))}</span>${x.kind === "email"
+      ? `<a class="btn ghost small" href="mailto:${esc(x.value)}?subject=${encodeURIComponent("Hangout: " + current.name)}&body=${msg}">Email</a>`
+      : `<a class="btn ghost small" href="sms:${esc(x.value)}?&body=${msg}">Text</a>`}</div>`).join("") : "";
+  }
+  drawSend();
+  $("#scrim").onclick = e => { if (e.target.id === "scrim") closeSheet(); };
+  $("#shx").onclick = closeSheet;
+  $("#shcopy").onclick = () => copy(inviteMessage(), "Message copied. Paste it in a text or the group chat.");
+  $("#shlink").onclick = () => copy(location.href, "Link copied.");
+  document.addEventListener("keydown", sheetKey);
+  setTimeout(() => $("#inv") && $("#inv").focus(), 50);
+}
+async function copy(text, done) {
+  try { await navigator.clipboard.writeText(text); toast(done); }
+  catch { const m = $("#shmsg"); if (m) { const r = document.createRange(); r.selectNodeContents(m); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } toast("Select the text and copy it."); }
+}
+
+/* ---------- Hangout ---------- */
+function openHangout(id) {
+  current = { id, loading: true }; stops = [];
+  app.innerHTML = `<div class="empty">Opening hangout…</div>`;
+  if (!db) { app.innerHTML = `<div class="empty">Sign in to claude.ai to open this hangout.</div>`; return; }
+  hUnsubs.push(db.doc("hangouts/" + id).onSnapshot(async snap => {
+    if (!snap.exists) { current = null; app.innerHTML = `<div class="empty">This hangout doesn’t exist or was deleted. <button class="link" onclick="location.hash=''">Back to hangouts</button></div>`; return; }
+    current = { id, ...snap.data() };
+    await resolveNames([...(current.people || []), current.createdBy]);
+    joinIfNew(); renderHangout();
+    if (pendingShare === id) { pendingShare = null; openShare(); }
+  }));
+  hUnsubs.push(db.collection("hangouts/" + id + "/stops").onSnapshot(async snap => {
+    stops = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
+    await resolveNames(stops.map(s => s.addedBy));
+    if (current && !current.loading) renderTimeline();
+  }));
+}
+let joined = {};
+async function joinIfNew() {
+  if (!me || !current || joined[current.id] || (current.people || []).includes(me)) return;
+  joined[current.id] = true;
+  try { await db.doc("hangouts/" + current.id).update({ people: [...(current.people || []), me] }); } catch {}
+}
+function touch() { if (current) db.doc("hangouts/" + current.id).update({ updatedAt: Date.now() }).catch(() => {}); }
+
+function renderHangout() {
+  const focusId = document.activeElement && document.activeElement.id;
+  if (!$("#hv") || $("#hv").dataset.id !== current.id) {
+    app.innerHTML = `
+      <div id="hv" data-id="${esc(current.id)}">
+        <section class="hhead">
+          <span class="eyebrow">San Francisco</span>
+          <input class="hname" id="hn" aria-label="Hangout name" required>
+          <div class="hmeta">
+            <input type="date" id="hd" aria-label="Day">
+            <span class="sun" id="sun"></span>
+            <div class="people" id="people"></div>
+          </div>
+        </section>
+        <div class="toolbar">
+          <button class="btn primary" id="share" type="button">${SHARE}Share</button>
+          <button class="btn ghost" id="copytext" type="button">Copy as text</button>
+          <button class="btn ghost" id="addstop" type="button">Add a stop</button>
+        </div>
+        <ol class="timeline" id="tl"></ol>
+        <div id="neweditor"></div>
+        <div class="addai" id="addai-row">
+          <label for="ai-add">Ask Claude</label>
+          <input id="ai-add" aria-label="Ask Claude to add something">
+          <button class="mic inline" id="mic" type="button" aria-label="Dictate" hidden>${MIC}</button>
+          <button class="btn dark" id="ai-go" type="button">Add</button>
+        </div>
+        <div class="partial" id="partial"></div>
+        <section class="dayevents" id="dayevents"></section>
+        <div class="actions" style="margin-top:32px"><button class="link danger" id="del" type="button">Delete hangout</button><span class="status" id="delmsg"></span></div>
+      </div>`;
+    $("#hn").onchange = e => {
+      const v = e.target.value.trim();
+      if (!v) { e.target.value = current.name || ""; toast("A hangout needs a name."); return; }
+      db.doc("hangouts/" + current.id).update({ name: v, updatedAt: Date.now() }).catch(() => toast("Couldn’t save. You may have view-only access."));
+    };
+    $("#hd").onchange = e => { db.doc("hangouts/" + current.id).update({ date: e.target.value, updatedAt: Date.now() }).catch(() => {}); };
+    $("#share").onclick = openShare;
+    $("#copytext").onclick = copyText;
+    $("#addstop").onclick = () => { editing = "new"; renderTimeline(); };
+    $("#ai-go").onclick = addWithClaude;
+    $("#ai-add").onkeydown = e => { if (e.key === "Enter") addWithClaude(); };
+    if (!sample) $("#addai-row").hidden = true;
+    setupMic();
+    $("#del").onclick = confirmDelete;
+  }
+  if (focusId !== "hn") $("#hn").value = current.name || "";
+  if (focusId !== "hd") $("#hd").value = current.date || "";
+  const ss = sfSunset(current.date);
+  $("#sun").innerHTML = ss ? `${SUN}Sunset ${esc(ss)}` : "";
+  $("#people").innerHTML = (current.people || []).map(p => `<span class="who">${esc(nameOf(p))}</span>`).join("");
+  current.loading = false;
+  renderTimeline();
+  eventsReady.then(drawDayEvents);
+}
+function drawDayEvents() {
+  const box = $("#dayevents"); if (!box || !current) return;
+  const evs = current.date ? eventsOn(current.date) : [];
+  if (!evs.length) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="section-head"><h2>Also happening that day</h2><p>Tap Add to drop one into your plan.</p></div>
+    <div class="events">${evs.slice(0, 8).map(e => eventRow(e, "add")).join("")}</div>${sourceLine()}`;
+  box.querySelectorAll("[data-addev]").forEach(b => b.onclick = async () => {
+    const e = EV.events.find(x => x.id === b.dataset.addev); if (!e) return;
+    b.disabled = true;
+    try { await db.collection(`hangouts/${current.id}/stops`).doc(rid()).set({ ...cleanStop(eventStop(e)), addedBy: me, updatedAt: Date.now() }); touch(); toast("Added to the plan"); }
+    catch { toast("Couldn’t add. You may have view-only access."); b.disabled = false; }
+  });
+}
+
+function stopEditor(s = {}) {
+  return `<div class="editor" id="ed">
+    <div class="grid2">
+      <div class="field"><label class="label" for="es">Start</label><input id="es" type="time" value="${esc(s.start || "")}"></div>
+      <div class="field"><label class="label" for="ee">End</label><input id="ee" type="time" value="${esc(s.end || "")}"></div>
+    </div>
+    <div class="field"><label class="label" for="et">What</label><input id="et" value="${esc(s.title || "")}"></div>
+    <div class="grid2">
+      <div class="field"><label class="label" for="ep">Where (links to Maps)</label><input id="ep" value="${esc(s.place || "")}"></div>
+      <div class="field"><label class="label" for="eh">Neighborhood</label><input id="eh" value="${esc(s.hood || "")}"></div>
+    </div>
+    <div class="field"><label class="label" for="en">Note</label><textarea id="en">${esc(s.note || "")}</textarea></div>
+    <div class="actions"><button class="btn primary" id="esave" type="button">Save stop</button><button class="link" id="ecancel" type="button">Cancel</button></div>
+  </div>`;
+}
+const toMin = t => { if (!t) return null; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+function durText(m) { const h = Math.floor(m / 60), r = m % 60; return (h ? h + " hr" : "") + (h && r ? " " : "") + (r ? r + " min" : ""); }
+function gapRow(prev, s) {
+  if (!prev) return "";
+  const bits = [];
+  const a = toMin(prev.end), b = toMin(s.start);
+  if (a != null && b != null) {
+    if (b - a >= 15) bits.push(`<span>${esc(durText(b - a))} to get there</span>`);
+    else if (b < a) bits.push(`<span class="warn">Overlaps by ${esc(durText(a - b))}</span>`);
+  }
+  if (prev.place && s.place) bits.push(`<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(prev.place + ", " + CITY)}&destination=${encodeURIComponent(s.place + ", " + CITY)}&travelmode=transit" target="_blank" rel="noopener">Muni directions</a>`);
+  return bits.length ? `<li class="gap"><div></div><div class="track"><div class="seg">${bits.join("")}</div></div></li>` : "";
+}
+function isNow(s) {
+  if (!current || current.date !== today()) return false;
+  const d = new Date(), n = d.getHours() * 60 + d.getMinutes(), a = toMin(s.start), b = toMin(s.end);
+  return a != null && b != null && n >= a && n < b;
+}
+setInterval(() => { if (current && !current.loading && !editing && $("#tl")) renderTimeline(); }, 60000);
+
+function linkify(t) { return esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>'); }
+function renderTimeline() {
+  const tl = $("#tl"); if (!tl) return;
+  tl.innerHTML = stops.length ? stops.map((s, i) => editing === s.id ? `<li>${stopEditor(s)}</li>` : gapRow(stops[i - 1], s) + `
+    <li class="stop${isNow(s) ? " now" : ""}">
+      <div class="time"><b>${esc(fmt12(s.start) || "—")}</b>${esc(fmt12(s.end))}</div>
+      <div class="track"><span class="station"></span>
+        <div class="card">
+          ${s.hood ? `<div class="hood">${esc(s.hood)}</div>` : ""}
+          <div class="stitle">${esc(s.title)}${isNow(s) ? `<span class="nowtag">Happening now</span>` : ""}</div>
+          ${s.place ? `<a class="place" href="${esc(mapsUrl(s.place))}" target="_blank" rel="noopener">${PIN}${esc(s.place)}</a>` : ""}
+          ${s.note ? `<div class="note">${linkify(s.note)}</div>` : ""}
+          <div class="sfoot"><span>Added by ${esc(nameOf(s.addedBy))}</span><button class="link" data-edit="${esc(s.id)}" type="button">Edit</button><button class="link danger" data-rm="${esc(s.id)}" type="button">Remove</button></div>
+        </div>
+      </div>
+    </li>`).join("") : `<li class="empty">Nothing planned yet. Add a stop, or ask Claude below.</li>`;
+  $("#neweditor").innerHTML = editing === "new" ? stopEditor({ start: stops.length ? stops[stops.length - 1].end : "10:00" }) : "";
+  tl.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { editing = b.dataset.edit; renderTimeline(); });
+  tl.querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+    try { await db.doc(`hangouts/${current.id}/stops/${b.dataset.rm}`).delete(); touch(); toast("Stop removed"); } catch { toast("Couldn’t remove. You may have view-only access."); }
+  });
+  if ($("#ed")) {
+    $("#et").focus();
+    $("#ecancel").onclick = () => { editing = null; renderTimeline(); };
+    $("#esave").onclick = async () => {
+      if (!$("#et").value.trim()) { $("#et").focus(); return; }
+      const data = cleanStop({ start: $("#es").value, end: $("#ee").value, title: $("#et").value.trim(), place: $("#ep").value.trim(), hood: $("#eh").value.trim(), note: $("#en").value.trim() });
+      const sid = editing === "new" ? rid() : editing;
+      const prev = stops.find(s => s.id === sid);
+      try { await db.doc(`hangouts/${current.id}/stops/${sid}`).set({ ...data, addedBy: prev ? prev.addedBy : me, updatedAt: Date.now() }); editing = null; renderTimeline(); touch(); toast("Saved"); }
+      catch { toast("Couldn’t save. You may have view-only access."); }
+    };
+  }
+}
+
+async function addWithClaude() {
+  const inp = $("#ai-add"), ask = inp.value.trim(); if (!ask) { inp.focus(); return; }
+  const btn = $("#ai-go"); btn.disabled = true; btn.textContent = "Adding…";
+  try {
+    const evs = current.date ? eventsOn(current.date).slice(0, 12) : [];
+    const out = await sample.json(`${SF_RULES}
+Here is the group’s San Francisco schedule${current.date ? " for " + fmtDate(current.date, { weekday: "long", month: "long", day: "numeric" }) + " (sunset about " + sfSunset(current.date) + ")" : ""}:
+${JSON.stringify(stops.map(s => ({ start: s.start, end: s.end, title: s.title, place: s.place, hood: s.hood })))}
+${evs.length ? "Real events that day you may use if they fit: " + evs.map(e => `${e.title} at ${e.where} ${e.time}-${e.endTime}`).join("; ") : ""}
+The group asks: "${ask}"
+Suggest only the NEW stops to add (don’t repeat existing ones), with times that fit around the schedule and near where they’ll be.
+Reply with only a JSON array of ${STOP_SHAPE}`, { modelTier: "default", cache: false });
+    const list = Array.isArray(out) ? out : (out && out.stops) || [];
+    for (const s of list.slice(0, 6)) await db.collection(`hangouts/${current.id}/stops`).doc(rid()).set({ ...cleanStop(s), addedBy: me, updatedAt: Date.now() });
+    inp.value = ""; touch(); toast(list.length ? `Added ${list.length} stop${list.length > 1 ? "s" : ""}` : "Nothing to add");
+  } catch (e) { toast(e && e.code === "rate_limited" ? "Too many requests. Try again in a minute." : "Couldn’t add that. Try rewording it."); }
+  btn.disabled = false; btn.textContent = "Add";
+}
+
+function planText() {
+  const lines = [current.name || "Hangout", fmtDate(current.date) + " · San Francisco", ""];
+  for (const s of stops) lines.push(`${fmt12(s.start)}${s.end ? "–" + fmt12(s.end) : ""}  ${s.title}${s.place ? " @ " + s.place : ""}`);
+  lines.push("", location.href);
+  return lines.join("\n");
+}
+async function copyText() {
+  try { await navigator.clipboard.writeText(planText()); toast("Plan copied. Paste it in the group chat."); }
+  catch { openShare(); $("#shmsg").textContent = planText(); toast("Select the text and copy it."); }
+}
+function confirmDelete() {
+  const m = $("#delmsg");
+  m.innerHTML = `Delete for everyone? <button class="link danger" id="delyes" type="button">Yes, delete</button> <button class="link" id="delno" type="button">Keep it</button>`;
+  $("#delno").onclick = () => m.innerHTML = "";
+  $("#delyes").onclick = async () => {
+    try {
+      for (const s of stops) await db.doc(`hangouts/${current.id}/stops/${s.id}`).delete();
+      await db.doc("hangouts/" + current.id).delete();
+      location.hash = "";
+    } catch { m.textContent = "Couldn’t delete. You may have view-only access."; }
+  };
+}
+
+/* ---------- Boot ---------- */
+route();
+(async () => {
+  if (!window.claude) { drawList(); return; }
+  const [d, u, s, dict] = await Promise.all(["db", "user", "sample", "dictation"].map(n => window.claude.use(n).catch(() => null)));
+  db = d; user = u; sample = s; dictation = dict;
+  if (user) { try { const p = await user.me(); me = p.id; if (p.name) $("#who-am-i").textContent = "Hi, " + p.name.split(" ")[0]; } catch {} }
+  if (dictation) wireDictation();
+  subscribeHome();
+  if (location.hash.slice(1) === "new") { setupMic(); applyAvailability(); } else route();
+})();
+</script>
